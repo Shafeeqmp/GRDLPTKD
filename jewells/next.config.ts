@@ -5,9 +5,3 @@ const nextConfig: NextConfig = {
 };
 
 export default nextConfig;
-
-module.exports ={
-  images:{
-    qualities:[100,70,75]
-  }
-}
