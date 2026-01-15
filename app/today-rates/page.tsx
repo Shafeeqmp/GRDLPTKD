@@ -1,27 +1,34 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
-import { TrendingUp, Calendar, ArrowLeft, Gem, Download, Edit2, Image as ImageIcon, Upload } from "lucide-react";
+import { Download, Edit2, Image as ImageIcon, Upload, X, Check, RefreshCw } from "lucide-react";
 import Link from "next/link";
 import html2canvas from "html2canvas";
+import { Playfair_Display, Cinzel } from "next/font/google";
+
+// Optimize fonts
+const playfair = Playfair_Display({ subsets: ["latin"], weight: ["400", "700"] });
+const cinzel = Cinzel({ subsets: ["latin"], weight: ["400", "700"] });
 
 export default function RatePage() {
     const [date, setDate] = useState("");
     const [rates, setRates] = useState({
-        gold22k1g: "12,650",
-        gold22k8g: "101,200",
-        gold18k1g: "5,440"
+        gold22k1g: "13,165",
+        gold22k8g: "105,320",
+        gold18k1g: "10,440"
     });
     const [footerNote, setFooterNote] = useState("പഴയ സ്വർണ്ണാഭരണങ്ങൾക്ക് ഉയർന്ന മൂല്യം");
+    const [branchesNote, setBranchesNote] = useState("Chungam-Pattikkad | Anjilangadi\nManjeri | Perinthalmanna");
     const [isEditing, setIsEditing] = useState(false);
     const [bgImage, setBgImage] = useState<string | null>(null);
     const [logo, setLogo] = useState("/images/logo.png");
     const posterRef = useRef<HTMLDivElement>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
     const logoInputRef = useRef<HTMLInputElement>(null);
+    const [downloading, setDownloading] = useState(false);
 
     useEffect(() => {
         const today = new Date();
-        setDate(today.toLocaleDateString("en-US", {
+        setDate(today.toLocaleDateString("en-GB", {
             day: "numeric",
             month: "long",
             year: "numeric"
@@ -55,359 +62,308 @@ export default function RatePage() {
     };
 
     const downloadPoster = async () => {
-        console.log("Downloading Rate Board...");
         if (!posterRef.current) return;
+        setDownloading(true);
 
         try {
+            // Wait for fonts to load (simple timeout/hack for now, ideally use document.fonts.ready)
+            await document.fonts.ready;
+
             const canvas = await html2canvas(posterRef.current, {
-                scale: 3,
-                backgroundColor: null,
+                scale: 3, // Higher scale for better quality
                 useCORS: true,
-                logging: true
+                backgroundColor: null,
+                logging: false,
+                onclone: (clonedDoc) => {
+                    // Ensure the cloned node is visible if it was somehow hidden
+                    const clonedElement = clonedDoc.querySelector('[data-poster-root]') as HTMLElement;
+                    if (clonedElement) {
+                        clonedElement.style.transform = 'none';
+                    }
+                }
             });
 
-            const image = canvas.toDataURL("image/jpeg", 1.0);
+            const image = canvas.toDataURL("image/jpeg", 0.95);
             const link = document.createElement("a");
             link.href = image;
-            link.download = `Gemerald-Tech-Rates-${date.replace(/,/g, '').replace(/ /g, '-')}.jpg`;
+            link.download = `Gemerald-Rates-${date.replace(/ /g, '-')}.jpg`;
             link.click();
         } catch (err) {
             console.error("Failed to download rate board:", err);
-            alert("Failed to download rate board. Please try again.");
+            alert("Failed to download. Please try again.");
+        } finally {
+            setDownloading(false);
         }
     };
 
     return (
-        <div className="min-h-screen bg-[#09090b] flex flex-col items-center justify-center p-4 relative overflow-hidden isolate">
+        <div className="min-h-screen bg-[#020202] text-white flex flex-col md:flex-row overflow-hidden font-sans selection:bg-[#d4af37] selection:text-black">
 
-            {/* Tech Background Ambience */}
-            <div className="absolute inset-0 z-[-1]">
-                <div className="absolute top-0 left-0 w-full h-full bg-[#0c0a09]"></div>
-                <div className="absolute top-[-20%] left-[20%] w-[500px] h-[500px] bg-[#f59e0b]/10 rounded-full blur-[120px] animate-pulse"></div>
-                <div className="absolute bottom-[-10%] right-[-10%] w-[600px] h-[600px] bg-[#78350f]/10 rounded-full blur-[100px]"></div>
-                {/* Grid lines */}
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:40px_40px]"></div>
+            {/* Ambient Background */}
+            <div className="fixed inset-0 z-0 pointer-events-none">
+                <div className="absolute top-[-20%] left-[-10%] w-[70vw] h-[70vw] bg-[#d4af37] rounded-full mix-blend-screen filter blur-[150px] opacity-[0.05] animate-pulse-slow"></div>
+                <div className="absolute bottom-[-20%] right-[-10%] w-[60vw] h-[60vw] bg-[#b8860b] rounded-full mix-blend-screen filter blur-[150px] opacity-[0.05] animate-pulse-slow delay-1000"></div>
+                <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-20 brightness-150 contrast-150"></div>
             </div>
 
-            {/* Controls Bar */}
-            <div className="fixed top-0 left-0 w-full px-4 py-4 flex justify-between items-center z-50 pointer-events-none bg-gradient-to-b from-[#09090b] to-transparent">
-                <Link href="/" className="pointer-events-auto group flex items-center gap-2 px-3 py-2 md:px-4 md:py-2 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all backdrop-blur-md">
-                    <ArrowLeft size={18} className="text-[#f59e0b] group-hover:-translate-x-1 transition-transform" />
-                    <span className="text-[#a8a29e] text-sm font-medium tracking-wide hidden md:inline">Home</span>
+            {/* Navigation / Header (Mobile) */}
+            <div className="md:hidden absolute top-0 left-0 w-full p-4 z-50 flex justify-between items-center">
+                <Link href="/" className="flex items-center gap-2 text-[#d4af37] hover:text-[#f3e5ab] transition-colors">
+                    <span className="text-sm uppercase tracking-widest font-medium">← Home</span>
                 </Link>
+            </div>
 
-                <div className="flex gap-2 pointer-events-auto">
-                    {/* Controls moved to bottom for better visibility */}
-                    {/* Hidden File Input kept here for ref mapping */}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                        className="hidden"
-                    />
+            {/* --- LEFT PANEL (Controls) --- */}
+            <div className={`
+                fixed bottom-0 left-0 w-full z-50 bg-[#0a0a0a]/90 backdrop-blur-xl border-t border-[#d4af37]/20 p-6 flex flex-col gap-4 transition-transform duration-500 ease-spring
+                md:relative md:w-[400px] md:h-screen md:border-t-0 md:border-r md:bg-[#050505] md:justify-center
+                ${isEditing ? 'translate-y-0' : 'translate-y-[calc(100%-80px)] md:translate-y-0'}
+            `}>
+                {/* Mobile Handle */}
+                <div className="md:hidden w-12 h-1.5 bg-[#333] rounded-full mx-auto mb-2 opacity-50" onClick={() => setIsEditing(!isEditing)}></div>
+
+                <div className="flex flex-col gap-6 max-w-sm mx-auto w-full">
+                    <div className="hidden md:block mb-8">
+                        <Link href="/" className="inline-flex items-center gap-2 text-[#888] hover:text-[#d4af37] transition-colors mb-4">
+                            <span>← Back to Home</span>
+                        </Link>
+                        <h2 className={`${playfair.className} text-3xl text-[#d4af37]`}>Rate Config</h2>
+                        <p className="text-[#666] text-sm mt-2">Customize your daily rate card.</p>
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="grid grid-cols-2 gap-3">
+                        <button
+                            onClick={() => fileInputRef.current?.click()}
+                            className="bg-[#1a1a1a] hover:bg-[#252525] border border-[#333] hover:border-[#d4af37]/50 text-white p-4 rounded-xl flex flex-col items-center gap-2 transition-all group"
+                        >
+                            <ImageIcon size={20} className="text-[#888] group-hover:text-[#d4af37]" />
+                            <span className="text-xs uppercase tracking-wider font-medium">Background</span>
+                        </button>
+                        <button
+                            onClick={() => logoInputRef.current?.click()}
+                            className="bg-[#1a1a1a] hover:bg-[#252525] border border-[#333] hover:border-[#d4af37]/50 text-white p-4 rounded-xl flex flex-col items-center gap-2 transition-all group"
+                        >
+                            <Upload size={20} className="text-[#888] group-hover:text-[#d4af37]" />
+                            <span className="text-xs uppercase tracking-wider font-medium">Logo</span>
+                        </button>
+                    </div>
+
+                    <div className="flex items-center justify-between bg-[#1a1a1a] p-2 rounded-xl border border-[#333]">
+                        <span className="text-sm font-medium text-[#888] ml-3">Edit Mode</span>
+                        <button
+                            onClick={() => setIsEditing(!isEditing)}
+                            className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${isEditing ? 'bg-[#d4af37] text-black' : 'bg-[#333] text-white'}`}
+                        >
+                            {isEditing ? <Check size={16} /> : <Edit2 size={16} />}
+                            {isEditing ? 'Done' : 'Edit'}
+                        </button>
+                    </div>
+
+                    <button
+                        onClick={downloadPoster}
+                        disabled={downloading}
+                        className="w-full py-4 mt-2 bg-gradient-to-r from-[#d4af37] to-[#b8860b] text-black font-bold text-lg rounded-xl shadow-[0_0_20px_rgba(212,175,55,0.3)] hover:shadow-[0_0_30px_rgba(212,175,55,0.5)] active:scale-[0.98] transition-all flex items-center justify-center gap-3"
+                    >
+                        {downloading ? <RefreshCw size={20} className="animate-spin" /> : <Download size={20} />}
+                        {downloading ? "GENERATING..." : "DOWNLOAD POSTER"}
+                    </button>
+
+                    {/* Hidden Inputs */}
+                    <input ref={fileInputRef} type="file" onChange={handleImageUpload} accept="image/*" className="hidden" />
+                    <input ref={logoInputRef} type="file" onChange={handleLogoUpload} accept="image/*" className="hidden" />
                 </div>
             </div>
 
-            {/* Main Content Area */}
-            <div className="flex flex-col items-center justify-center w-full min-h-screen py-20">
 
-                {/* POSTER CAPTURE AREA */}
-                <div className="p-4 md:p-10 flex justify-center w-full">
-                    <div
-                        ref={posterRef}
-                        className="relative w-full max-w-[380px] rounded-[20px] shadow-2xl overflow-hidden isolate flex flex-col justify-between"
-                        style={{
-                            backgroundColor: '#000000',
-                            borderColor: 'rgba(245, 158, 11, 0.3)',
-                            borderWidth: '1px',
-                            borderStyle: 'solid',
-                            aspectRatio: '9/16'
-                        }}
-                    >
+            {/* --- RIGHT PANEL (Preview) --- */}
+            <div className="flex-1 flex items-center justify-center p-4 md:p-10 relative overflow-auto min-h-screen md:min-h-0">
 
-                        {/* Poster Background */}
-                        <div className="absolute inset-0 z-[-1] overflow-hidden">
-                            {bgImage ? (
-                                <>
-                                    <img src={bgImage} alt="Background" className="absolute inset-0 w-full h-full object-cover" />
-                                    <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0, 0, 0, 0.6)', backdropFilter: 'blur(2px)' }}></div>
-                                </>
-                            ) : (
-                                <>
-                                    {/* Futuristic lines */}
-                                    <div className="absolute inset-0" style={{ backgroundColor: '#0a0a0a' }}></div>
-                                    <div className="absolute top-0 left-0 w-full h-[1px] opacity-50" style={{ background: 'linear-gradient(90deg, transparent, #f59e0b, transparent)' }}></div>
-                                    <div className="absolute bottom-0 left-0 w-full h-[1px] opacity-50" style={{ background: 'linear-gradient(90deg, transparent, #f59e0b, transparent)' }}></div>
-                                    <div className="absolute -top-[100px] -right-[100px] w-[300px] h-[300px] rounded-full blur-[80px]" style={{ backgroundColor: 'rgba(245, 158, 11, 0.1)' }}></div>
-                                    <div className="absolute top-[30%] left-[-100px] w-[200px] h-[400px] rotate-45 blur-[60px]" style={{ backgroundColor: 'rgba(234, 88, 12, 0.1)' }}></div>
-                                </>
-                            )}
-                        </div>
-
-                        {/* Header branding */}
-                        <div className="pt-8 px-6 text-center flex-shrink-0 relative z-10">
-                            <div className="flex justify-center mb-4">
-                                <div className="relative">
-                                    <div className="absolute -inset-2 rounded-full blur opacity-20 animate-pulse" style={{ backgroundColor: '#f59e0b' }}></div>
-                                    <img
-                                        src={logo}
-                                        alt="Icon"
-                                        className="w-16 h-16 object-contain relative z-10"
-                                        style={{ filter: 'drop-shadow(0 0 5px rgba(251,191,36,0.5))' }}
-                                    />
-                                </div>
+                {/* POSTER ELEMENT */}
+                <div
+                    ref={posterRef}
+                    data-poster-root
+                    className="relative w-full max-w-[420px] aspect-[9/16] bg-black overflow-hidden flex flex-col isolate" // Increased Max Width
+                    style={{
+                        boxShadow: '0 0 0 1px #333, 0 20px 50px -10px rgba(0,0,0,0.5)'
+                    }}
+                >
+                    {/* Background Layer */}
+                    <div className="absolute inset-0 z-[-1]">
+                        {bgImage ? (
+                            <>
+                                <img src={bgImage} alt="bg" className="w-full h-full object-cover" />
+                                <div className="absolute inset-0" style={{ backgroundColor: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}></div>
+                            </>
+                        ) : (
+                            <div className="w-full h-full bg-[#080808] relative overflow-hidden">
+                                {/* Golden Mesh Gradient */}
+                                <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] opacity-20"
+                                    style={{
+                                        background: 'radial-gradient(circle at center, #d4af37 0%, transparent 50%)',
+                                        filter: 'blur(80px)'
+                                    }}
+                                ></div>
+                                {/* CSS Pattern (Safe for download) */}
+                                <div className="absolute inset-0 opacity-10"
+                                    style={{
+                                        backgroundImage: 'linear-gradient(30deg, #222 12%, transparent 12.5%, transparent 87%, #222 87.5%, #222), linear-gradient(150deg, #222 12%, transparent 12.5%, transparent 87%, #222 87.5%, #222), linear-gradient(30deg, #222 12%, transparent 12.5%, transparent 87%, #222 87.5%, #222), linear-gradient(150deg, #222 12%, transparent 12.5%, transparent 87%, #222 87.5%, #222), linear-gradient(60deg, #222777 25%, transparent 25.5%, transparent 75%, #222 75.5%, #222), linear-gradient(60deg, #222 25%, transparent 25.5%, transparent 75%, #222 75.5%, #222)',
+                                        backgroundSize: '20px 35px',
+                                        backgroundPosition: '0 0, 0 0, 10px 18px, 10px 18px, 0 0, 10px 18px'
+                                    }}
+                                ></div>
+                                {/* Elegant Borders */}
+                                <div className="absolute top-4 left-4 right-4 bottom-4 border rounded-t-[100px] rounded-b-[20px]" style={{ borderColor: 'rgba(212, 175, 55, 0.2)' }}></div>
                             </div>
+                        )}
+                    </div>
 
-                            <h1 className="text-3xl font-sans font-bold tracking-[0.1em] uppercase mb-1" style={{ color: '#ffffff', textShadow: '0 0 10px rgba(251,191,36,0.3)' }}>
-                                Gemerald
+                    {/* Content Container */}
+                    <div className="flex-1 flex flex-col items-center p-6 relative z-10 w-full">
+
+                        {/* Header / Logo */}
+                        <div className="flex flex-col items-center mt-4 mb-2"> {/* Reduced Margins */}
+                            <div className="w-20 h-20 mb-2 relative flex items-center justify-center filter drop-shadow-[0_0_15px_rgba(212,175,55,0.3)]"> {/* Slightly Smaller Logo */}
+                                <img src={logo} alt="Logo" className="w-full h-full object-contain" />
+                            </div>
+                            <h1 className={`${cinzel.className} text-3xl md:text-4xl text-white font-bold tracking-[0.15em] text-center drop-shadow-lg`}>
+                                <span className="text-[#d4af37]">GEM</span>ERALD
                             </h1>
-                            <h3 className="text-[10px] font-sans font-medium tracking-[0.4em] uppercase pb-3 mx-10" style={{ color: '#f59e0b', borderBottom: '1px solid rgba(245, 158, 11, 0.3)' }}>
-                                Gold & Diamonds
-                            </h3>
+                            <div className="h-[1px] w-24 my-2" style={{ background: 'linear-gradient(90deg, transparent, #d4af37, transparent)' }}></div>
+                            <p className={`${playfair.className} text-[#aaa] text-xs uppercase tracking-[0.4em]`}>Gold & Diamonds</p>
                         </div>
 
-                        {/* Date Display */}
-                        <div className="flex justify-center my-6 flex-shrink-0 relative z-10">
-                            <div className="relative group">
-                                <div className="absolute -inset-0.5 rounded-md blur opacity-30" style={{ background: 'linear-gradient(90deg, #f59e0b, #ea580c)' }}></div>
-                                <div className="relative flex items-center gap-3 px-6 py-2 rounded-md" style={{ backgroundColor: '#000000', borderColor: 'rgba(245, 158, 11, 0.3)', borderWidth: '1px', borderStyle: 'solid' }}>
-                                    <Calendar size={14} style={{ color: '#f59e0b' }} />
-                                    {isEditing ? (
-                                        <input
-                                            type="text"
-                                            value={date}
-                                            onChange={(e) => setDate(e.target.value)}
-                                            className="text-sm font-mono uppercase tracking-widest outline-none w-36 text-center rounded px-2"
-                                            style={{ backgroundColor: '#2a2a2a', borderColor: '#f59e0b', borderWidth: '1px', borderStyle: 'solid', color: '#ffffff' }}
-                                            placeholder="DATE"
-                                        />
-                                    ) : (
-                                        <span className="text-sm font-mono uppercase tracking-widest" style={{ color: '#e5e5e5' }}>{date}</span>
-                                    )}
-                                </div>
+                        {/* Date */}
+                        <div className="mb-4 w-full flex justify-center"> {/* Reduced Margin */}
+                            <div className="border backdrop-blur-sm px-8 py-1.5 rounded-full flex items-center justify-center min-w-[200px]"
+                                style={{ borderColor: 'rgba(212, 175, 55, 0.3)', backgroundColor: 'rgba(0,0,0,0.4)' }}>
+                                {isEditing ? (
+                                    <input
+                                        value={date}
+                                        onChange={e => setDate(e.target.value)}
+                                        className="bg-transparent text-center text-[#d4af37] font-medium outline-none w-full uppercase tracking-wider text-base font-mono"
+                                    />
+                                ) : (
+                                    <span className="text-[#d4af37] text-sm font-semibold uppercase tracking-[0.15em]">{date}</span>
+                                )}
                             </div>
                         </div>
 
-                        {/* Rates Section */}
-                        <div className="px-5 flex-grow flex flex-col gap-4 relative z-10 pb-4 justify-center">
+                        {/* Rates Card */}
+                        <div className="w-full backdrop-blur-md rounded-2xl border p-1 flex-1 flex flex-col max-h-[460px] min-h-0" // Reduced max-h and added min-h-0
+                            style={{
+                                background: 'linear-gradient(to bottom, rgba(26,26,26,0.8), rgba(10,10,10,0.9))',
+                                borderColor: 'rgba(212, 175, 55, 0.3)'
+                            }}>
 
-                            {/* Main Rates Block */}
-                            <div className="relative">
-                                {/* Tech Borders */}
-                                <div className="absolute top-0 left-0 w-2 h-2 border-l border-t" style={{ borderColor: '#f59e0b' }}></div>
-                                <div className="absolute top-0 right-0 w-2 h-2 border-r border-t" style={{ borderColor: '#f59e0b' }}></div>
-                                <div className="absolute bottom-0 left-0 w-2 h-2 border-l border-b" style={{ borderColor: '#f59e0b' }}></div>
-                                <div className="absolute bottom-0 right-0 w-2 h-2 border-r border-b" style={{ borderColor: '#f59e0b' }}></div>
+                            <div className="border rounded-xl w-full h-full flex flex-col p-4 relative overflow-hidden" // Reduced Padding
+                                style={{ borderColor: 'rgba(212, 175, 55, 0.1)' }}>
+                                {/* Decor */}
+                                <div className="absolute top-0 left-0 w-10 h-10 border-t border-l rounded-tl-xl" style={{ borderColor: 'rgba(212, 175, 55, 0.4)' }}></div>
+                                <div className="absolute top-0 right-0 w-10 h-10 border-t border-r rounded-tr-xl" style={{ borderColor: 'rgba(212, 175, 55, 0.4)' }}></div>
+                                <div className="absolute bottom-0 left-0 w-10 h-10 border-b border-l rounded-bl-xl" style={{ borderColor: 'rgba(212, 175, 55, 0.4)' }}></div>
+                                <div className="absolute bottom-0 right-0 w-10 h-10 border-b border-r rounded-br-xl" style={{ borderColor: 'rgba(212, 175, 55, 0.4)' }}></div>
 
-                                <div className="backdrop-blur-md p-5 border-l border-r" style={{ backgroundColor: 'rgba(28, 25, 23, 0.8)', borderColor: 'rgba(245, 158, 11, 0.2)' }}>
-                                    <div className="flex items-center gap-2 mb-5 justify-center">
-                                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#f59e0b', boxShadow: '0 0 5px #f59e0b' }}></span>
-                                        <span className="text-xs font-bold uppercase tracking-[0.2em]" style={{ color: '#fbbf24' }}>Gold Rates</span>
-                                        <span className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: '#f59e0b', boxShadow: '0 0 5px #f59e0b' }}></span>
-                                    </div>
+                                <h3 className={`${playfair.className} text-center text-xl md:text-2xl italic mb-4 relative`} style={{ color: 'rgba(255,255,255,0.9)' }}> {/* Reduced Margin */}
+                                    Today's Gold Rate
+                                </h3>
 
-                                    <div className="space-y-5">
-                                        {/* 22K 1 Gram */}
-                                        <div className="flex items-center justify-between group">
-                                            <div className="flex flex-col">
-                                                <span className="text-xl font-bold font-mono" style={{ color: '#f59e0b' }}>22K</span>
-                                                <span className="text-[10px] uppercase tracking-wider" style={{ color: '#a8a29e' }}>1 Gram</span>
-                                            </div>
-                                            <div className="flex items-baseline gap-1 relative">
-                                                <span className="text-sm relative z-10" style={{ color: '#d97706' }}>₹</span>
-                                                {isEditing ? (
-                                                    <input
-                                                        value={rates.gold22k1g}
-                                                        onChange={(e) => handleRateChange('gold22k1g', e.target.value)}
-                                                        className="rounded px-2 w-28 text-right font-mono text-2xl font-bold outline-none transition-colors relative z-10"
-                                                        style={{ backgroundColor: '#2a2a2a', borderColor: '#f59e0b', borderWidth: '1px', borderStyle: 'solid', color: '#ffffff' }}
-                                                    />
-                                                ) : (
-                                                    <span className="font-mono text-3xl font-bold tracking-tighter relative z-10" style={{ color: '#fbbf24', textShadow: '0 0 5px rgba(251,191,36,0.3)' }}>{rates.gold22k1g}</span>
-                                                )}
-                                            </div>
-                                        </div>
+                                <div className="flex-1 flex flex-col justify-center gap-4"> {/* Changed to gap-4 */}
+                                    <RateRow
+                                        label="22K Gold"
+                                        sub="1 Gram"
+                                        price={rates.gold22k1g}
+                                        onChange={(v) => handleRateChange('gold22k1g', v)}
+                                        isEditing={isEditing}
+                                        highlight
+                                    />
 
-                                        <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent)' }}></div>
+                                    <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent)' }}></div>
 
-                                        {/* 22K 8 Gram */}
-                                        <div className="flex items-center justify-between group">
-                                            <div className="flex flex-col">
-                                                <span className="text-xl font-bold font-mono" style={{ color: '#d6d3d1' }}>22K</span>
-                                                <span className="text-[10px] uppercase tracking-wider" style={{ color: '#a8a29e' }}>8 Gram (1 Pavan)</span>
-                                            </div>
-                                            <div className="flex items-baseline gap-1 relative">
-                                                <span className="text-sm relative z-10" style={{ color: '#d97706' }}>₹</span>
-                                                {isEditing ? (
-                                                    <input
-                                                        value={rates.gold22k8g}
-                                                        onChange={(e) => handleRateChange('gold22k8g', e.target.value)}
-                                                        className="rounded px-2 w-28 text-right font-mono text-2xl font-bold outline-none transition-colors relative z-10"
-                                                        style={{ backgroundColor: '#2a2a2a', borderColor: '#f59e0b', borderWidth: '1px', borderStyle: 'solid', color: '#ffffff' }}
-                                                    />
-                                                ) : (
-                                                    <span className="font-mono text-3xl font-bold tracking-tighter relative z-10" style={{ color: '#e5e5e5' }}>{rates.gold22k8g}</span>
-                                                )}
-                                            </div>
-                                        </div>
+                                    <RateRow
+                                        label="22K Gold"
+                                        sub="8 Gram (1 Pavan)"
+                                        price={rates.gold22k8g}
+                                        onChange={(v) => handleRateChange('gold22k8g', v)}
+                                        isEditing={isEditing}
+                                    />
 
-                                        <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(245,158,11,0.3), transparent)' }}></div>
+                                    <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, rgba(212, 175, 55, 0.2), transparent)' }}></div>
 
-                                        {/* 18K 1 Gram */}
-                                        <div className="flex items-center justify-between group">
-                                            <div className="flex flex-col">
-                                                <span className="text-xl font-bold font-mono" style={{ color: '#d6d3d1' }}>18K</span>
-                                                <span className="text-[10px] uppercase tracking-wider" style={{ color: '#a8a29e' }}>1 Gram</span>
-                                            </div>
-                                            <div className="flex items-baseline gap-1 relative">
-                                                <span className="text-sm relative z-10" style={{ color: '#d97706' }}>₹</span>
-                                                {isEditing ? (
-                                                    <input
-                                                        value={rates.gold18k1g}
-                                                        onChange={(e) => handleRateChange('gold18k1g', e.target.value)}
-                                                        className="rounded px-2 w-28 text-right font-mono text-2xl font-bold outline-none transition-colors relative z-10"
-                                                        style={{ backgroundColor: '#2a2a2a', borderColor: '#f59e0b', borderWidth: '1px', borderStyle: 'solid', color: '#ffffff' }}
-                                                    />
-                                                ) : (
-                                                    <span className="font-mono text-3xl font-bold tracking-tighter relative z-10" style={{ color: '#e5e5e5' }}>{rates.gold18k1g}</span>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                    </div>
+                                    <RateRow
+                                        label="18K Gold"
+                                        sub="1 Gram"
+                                        price={rates.gold18k1g}
+                                        onChange={(v) => handleRateChange('gold18k1g', v)}
+                                        isEditing={isEditing}
+                                    />
                                 </div>
                             </div>
                         </div>
 
                         {/* Footer */}
-                        <div className="py-4 text-center flex-shrink-0 border-t relative z-10" style={{ borderColor: 'rgba(245, 158, 11, 0.1)', backgroundColor: 'rgba(12, 10, 9, 0.5)' }}>
+                        <div className="mt-auto pt-4 text-center w-full z-20"> {/* Reduced Padding, added Z-index */}
+                            {isEditing ? (
+                                <input
+                                    value={footerNote}
+                                    onChange={e => setFooterNote(e.target.value)}
+                                    className="w-full bg-transparent text-center text-[#d4af37] border-b outline-none pb-1 mb-2 font-serif italic text-lg lg:text-xl"
+                                    style={{ borderColor: 'rgba(212, 175, 55, 0.3)' }}
+                                />
+                            ) : (
+                                <p className={`${playfair.className} text-[#d4af37] text-lg lg:text-xl italic mb-2 drop-shadow-md`}>"{footerNote}"</p>
+                            )}
 
-                            {/* Editable Promo Note */}
-                            <div className="mb-3 px-4">
+                            <div className="flex flex-col items-center gap-1 mt-1 opacity-90 w-full px-4">
                                 {isEditing ? (
-                                    <input
-                                        value={footerNote}
-                                        onChange={(e) => setFooterNote(e.target.value)}
-                                        className="w-full text-center font-bold text-sm outline-none rounded p-1"
-                                        style={{ backgroundColor: '#2a2a2a', borderColor: '#f59e0b', borderWidth: '1px', borderStyle: 'solid', color: '#fbbf24' }}
+                                    <textarea
+                                        value={branchesNote}
+                                        onChange={e => setBranchesNote(e.target.value)}
+                                        className="w-full bg-transparent text-center text-white text-[10px] uppercase tracking-wider outline-none p-2 rounded border border-[#333] focus:border-[#d4af37]"
+                                        rows={2}
                                     />
                                 ) : (
-                                    <h4 className="font-bold text-sm tracking-wide leading-tight" style={{ color: '#fbbf24', textShadow: '0 0 10px rgba(245, 158, 11, 0.2)' }}>
-                                        {footerNote}
-                                    </h4>
+                                    <div className="whitespace-pre-line text-center">
+                                        {branchesNote.split('\n').map((line, i) => (
+                                            <p key={i} className="text-[10px] uppercase tracking-[0.2em] text-white leading-relaxed">{line}</p>
+                                        ))}
+                                    </div>
                                 )}
                             </div>
-
-                            <div className="mb-2 px-2">
-                                <p className="text-[9px] font-bold uppercase tracking-wider leading-relaxed" style={{ color: '#d97706' }}>
-                                    Cungam-pattikkad | Anjilangadi <br /> Manjeri | Perinthalmanna
-                                </p>
-                            </div>
-                            <p className="text-[7px] font-medium uppercase tracking-[0.2em]" style={{ color: '#57534e' }}>
-                                Market Rates Subject to Change
-                            </p>
                         </div>
 
                     </div>
+
+                    {/* Bottom Gold Bar Decor */}
+                    <div className="h-2 w-full shrink-0" style={{ background: 'linear-gradient(90deg, #b8860b, #f3e5ab, #b8860b)' }}></div>
                 </div>
 
-                {/* Actions Area - Mobile Friendly */}
-                <div className="mt-8 flex flex-col gap-4 w-full max-w-[380px] px-4">
-                    <button
-                        onClick={downloadPoster}
-                        className="w-full py-4 rounded-xl bg-linear-to-r from-[#f59e0b] to-[#ea580c] text-white font-bold text-lg shadow-[0_0_30px_rgba(245,158,11,0.3)] hover:scale-105 transition-transform flex items-center justify-center gap-2 border border-[#fbbf24]/50 hover:bg-[#c2410c] active:scale-95"
-                    >
-                        <Download size={24} />
-                        DOWNLOAD POSTER
-                    </button>
-
-                    {/* Hidden Inputs */}
-                    <input
-                        type="file"
-                        ref={fileInputRef}
-                        onChange={handleImageUpload}
-                        accept="image/*"
-                        className="hidden"
-                    />
-                    <input
-                        type="file"
-                        ref={logoInputRef}
-                        onChange={handleLogoUpload}
-                        accept="image/*"
-                        className="hidden"
-                    />
-
-                    <div className="flex gap-2">
-                        <button
-                            onClick={() => fileInputRef.current?.click()}
-                            className="flex-1 py-3 px-2 rounded-xl bg-[#1c1917] border border-[#f59e0b]/30 text-[#f59e0b] font-medium flex items-center justify-center gap-1.5 hover:bg-[#292524] transition-colors text-xs sm:text-sm"
-                        >
-                            <ImageIcon size={16} />
-                            Bg Image
-                        </button>
-                        <button
-                            onClick={() => logoInputRef.current?.click()}
-                            className="flex-1 py-3 px-2 rounded-xl bg-[#1c1917] border border-[#f59e0b]/30 text-[#f59e0b] font-medium flex items-center justify-center gap-1.5 hover:bg-[#292524] transition-colors text-xs sm:text-sm"
-                        >
-                            <ImageIcon size={16} />
-                            Logo
-                        </button>
-                        <button
-                            onClick={() => setIsEditing(!isEditing)}
-                            className={`flex-1 py-3 px-2 rounded-xl border font-medium flex items-center justify-center gap-1.5 transition-all text-xs sm:text-sm ${isEditing ? 'bg-[#f59e0b]/20 border-[#f59e0b] text-[#f59e0b]' : 'bg-[#1c1917] border-[#f59e0b]/30 text-[#a8a29e] hover:bg-[#292524]'}`}
-                        >
-                            <Edit2 size={16} />
-                            {isEditing ? 'Done' : 'Edit'}
-                        </button>
-                    </div>
-
-                    <div className="text-center mt-2">
-                        {isEditing && (
-                            <p className="text-[#f59e0b] text-sm font-medium animate-pulse">TAP VALUES ABOVE TO EDIT</p>
-                        )}
-                        {!bgImage && !isEditing && (
-                            <p className="text-[#57534e] text-xs">Tip: Upload your own background & logo</p>
-                        )}
-                    </div>
-                </div>
             </div>
         </div>
     );
 }
 
-interface TechRateRowProps {
-    label: string;
-    sub: string;
-    value: string;
-    onChange: (val: string) => void;
-    isEditing: boolean;
-    highlight?: boolean;
-}
-
-function TechRateRow({ label, sub, value, onChange, isEditing, highlight = false }: TechRateRowProps) {
+function RateRow({ label, sub, price, onChange, isEditing, highlight = false }: { label: string, sub: string, price: string, onChange: (v: string) => void, isEditing: boolean, highlight?: boolean }) {
     return (
-        <div className="flex items-center justify-between group">
-            <div className="flex flex-col">
-                <span className={`text-xl font-bold font-mono ${highlight ? 'text-[#f59e0b]' : 'text-[#d6d3d1]'}`}>{label}</span>
-                <span className="text-[9px] text-[#78716c] uppercase tracking-wider">{sub}</span>
+        <div className="flex items-center justify-between group w-full">
+            <div className="flex flex-col items-start">
+                <span className={`text-2xl font-bold font-serif ${highlight ? 'text-[#d4af37] drops-shadow-sm' : 'text-[#c0c0c0]'}`}>{label}</span> {/* Increased Size */}
+                <span className="text-xs uppercase tracking-wider text-[#666]">{sub}</span> {/* Increased Size */}
             </div>
 
-            <div className="flex items-baseline gap-1 relative">
-                <div className="absolute -inset-2 bg-[#f59e0b]/5 rounded opacity-0 group-hover:opacity-100 transition-opacity"></div>
-                <span className="text-[#d97706] text-sm relative z-10">₹</span>
+            <div className={`flex items-baseline gap-1 ${isEditing ? 'bg-[#222] rounded px-2 -mr-2 ring-1 ring-[#d4af37]/50' : ''}`}>
+                <span className="text-[#d4af37] text-lg md:text-xl font-serif">₹</span> {/* Increased Size */}
                 {isEditing ? (
                     <input
-                        value={value}
-                        onChange={(e) => onChange(e.target.value)}
-                        className={`bg-[#2a2a2a] border border-[#f59e0b] rounded px-2 w-28 text-right font-mono text-2xl font-bold outline-none focus:border-[#f59e0b] transition-colors relative z-10 text-white`}
+                        value={price}
+                        onChange={e => onChange(e.target.value)}
+                        className="bg-transparent text-right w-32 text-4xl font-bold font-sans text-white outline-none" // Increased Size & Width
                     />
                 ) : (
-                    <span className={`font-mono text-3xl font-bold tracking-tighter relative z-10 drop-shadow-sm ${highlight ? 'text-[#fbbf24]' : 'text-[#e5e5e5]'}`}>
-                        {value}
-                    </span>
+                    <span className="text-4xl md:text-5xl font-sans font-bold text-white tracking-tight drop-shadow-md">{price}</span> // Increased Size
                 )}
             </div>
         </div>
     );
 }
+
