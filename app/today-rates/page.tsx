@@ -19,6 +19,7 @@ export default function RatePage() {
     const [footerNote, setFooterNote] = useState("പഴയ സ്വർണ്ണാഭരണങ്ങൾക്ക് ഉയർന്ന മൂല്യം");
     const [branchesNote, setBranchesNote] = useState("Chungam-Pattikkad | Anjilangadi\nManjeri | Perinthalmanna");
     const [isEditing, setIsEditing] = useState(false);
+    const [isPanelOpen, setIsPanelOpen] = useState(false); // Separate state for panel visibility
     const [bgImage, setBgImage] = useState<string | null>(null);
     const [logo, setLogo] = useState("/images/logo.png");
     const posterRef = useRef<HTMLDivElement>(null);
@@ -96,6 +97,14 @@ export default function RatePage() {
         }
     };
 
+    const toggleEditMode = () => {
+        const newState = !isEditing;
+        setIsEditing(newState);
+        if (newState) {
+            setIsPanelOpen(false); // Auto-minimize panel when starting to edit
+        }
+    };
+
     return (
         <div className="min-h-screen bg-[#020202] text-white flex flex-col md:flex-row overflow-hidden font-sans selection:bg-[#d4af37] selection:text-black">
 
@@ -117,10 +126,10 @@ export default function RatePage() {
             <div className={`
                 fixed bottom-0 left-0 w-full z-50 bg-[#0a0a0a]/90 backdrop-blur-xl border-t border-[#d4af37]/20 p-6 flex flex-col gap-4 transition-transform duration-500 ease-spring
                 md:relative md:w-[400px] md:h-screen md:border-t-0 md:border-r md:bg-[#050505] md:justify-center
-                ${isEditing ? 'translate-y-0' : 'translate-y-[calc(100%-80px)] md:translate-y-0'}
+                ${isPanelOpen ? 'translate-y-0' : 'translate-y-[calc(100%-80px)] md:translate-y-0'}
             `}>
                 {/* Mobile Handle */}
-                <div className="md:hidden w-12 h-1.5 bg-[#333] rounded-full mx-auto mb-2 opacity-50" onClick={() => setIsEditing(!isEditing)}></div>
+                <div className="md:hidden w-12 h-1.5 bg-[#333] rounded-full mx-auto mb-2 opacity-50" onClick={() => setIsPanelOpen(!isPanelOpen)}></div>
 
                 <div className="flex flex-col gap-6 max-w-sm mx-auto w-full">
                     <div className="hidden md:block mb-8">
@@ -152,7 +161,7 @@ export default function RatePage() {
                     <div className="flex items-center justify-between bg-[#1a1a1a] p-2 rounded-xl border border-[#333]">
                         <span className="text-sm font-medium text-[#888] ml-3">Edit Mode</span>
                         <button
-                            onClick={() => setIsEditing(!isEditing)}
+                            onClick={toggleEditMode}
                             className={`px-4 py-2 rounded-lg text-sm font-bold transition-all flex items-center gap-2 ${isEditing ? 'bg-[#d4af37] text-black' : 'bg-[#333] text-white'}`}
                         >
                             {isEditing ? <Check size={16} /> : <Edit2 size={16} />}
@@ -177,7 +186,7 @@ export default function RatePage() {
 
 
             {/* --- RIGHT PANEL (Preview) --- */}
-            <div className="flex-1 flex items-center justify-center p-4 md:p-10 relative overflow-auto min-h-screen md:min-h-0">
+            <div className="flex-1 flex items-center justify-center p-4 pb-48 md:p-10 relative overflow-auto min-h-screen md:min-h-0">
 
                 {/* POSTER ELEMENT */}
                 <div
